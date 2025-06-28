@@ -6,10 +6,10 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = {
+/* @EnableJpaRepositories(basePackages = {
 		"com.brold.healthTalk.user.repository"})
 @EntityScan(basePackages = {
-		"com.brold.healthTalk.user.entity"})
+		"com.brold.healthTalk.user.entity"}) */
 public class HealthTalkApplication {
 
 	public static void main(String[] args) {
