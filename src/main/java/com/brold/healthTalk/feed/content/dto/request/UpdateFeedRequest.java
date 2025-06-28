@@ -9,26 +9,17 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class CreateFeedRequest {
-
+public class UpdateFeedRequest {
     @NotBlank @Size(max = 200)
     private String content;
-
     @Valid
     private List<ExerciseRecord> exercises;
-
-    // inner DTO
     @Data
     public static class ExerciseRecord {
-        @NotNull
-        private Integer exerciseDefinitionId;
+        @NotNull private Integer exerciseDefinitionId;
         @NotNull private Integer sets;
         @NotNull private Integer reps;
         private Double weightKg;
         private Integer durationMin;
-        // getters/setters...
     }
-
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
 }
