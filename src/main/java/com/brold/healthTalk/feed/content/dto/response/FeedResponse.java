@@ -2,6 +2,7 @@ package com.brold.healthTalk.feed.content.dto.response;
 
 import com.brold.healthTalk.feed.content.domain.Feed;
 import com.brold.healthTalk.feed.content.domain.FeedExercise;
+import com.brold.healthTalk.feed.tag.dto.response.TagResponse;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class FeedResponse {
 
     // 1) 운동 기록을 담을 리스트 필드 추가
     private List<ExerciseRecord> exercises;
+    private List<TagResponse> tags;
 
     public FeedResponse(Long id,
                         Long authorId,
@@ -37,6 +39,24 @@ public class FeedResponse {
         this.exercises = exercises;
     }
 
+    public FeedResponse(Long id,
+                        Long authorId,
+                        String content,
+                        String imageUrl,
+                        LocalDateTime createdAt,
+                        LocalDateTime updatedAt,
+                        List<ExerciseRecord> exercises,
+                        List<TagResponse> tags) {
+        this.id        = id;
+        this.authorId  = authorId;
+        this.content   = content;
+        this.imageUrl  = imageUrl;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.exercises = exercises;
+        this.tags      = tags;
+    }
+
     public static FeedResponse fromEntity(Feed f) {
         // 2) FeedExercise → ExerciseRecord 매핑
         List<ExerciseRecord> records = f.getExercises().stream()
@@ -51,6 +71,22 @@ public class FeedResponse {
                 f.getCreatedAt(),
                 f.getUpdatedAt(),
                 records
+        );
+    }
+
+    public static FeedResponse fromEntity(Feed f, List<TagResponse> tags) {
+        List<ExerciseRecord> records = f.getExercises().stream()
+                .map(FeedResponse::toRecord)
+                .collect(Collectors.toList());
+        return new FeedResponse(
+                f.getId(),
+                f.getUserId(),
+                f.getContent(),
+                f.getImageUrl(),
+                f.getCreatedAt(),
+                f.getUpdatedAt(),
+                records,
+                tags
         );
     }
 

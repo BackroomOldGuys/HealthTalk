@@ -17,6 +17,19 @@ public class CreateFeedRequest {
     @Valid
     private List<ExerciseRecord> exercises;
 
+    private List<Integer> tags;
+
+    //const
+    public CreateFeedRequest() {}
+
+    public CreateFeedRequest(String content,
+                             List<ExerciseRecord> exercises,
+                             List<Integer> tags) {
+        this.content   = content;
+        this.exercises = exercises;
+        this.tags      = tags;
+    }
+
     // inner DTO
     @Data
     public static class ExerciseRecord {
@@ -26,7 +39,6 @@ public class CreateFeedRequest {
         @NotNull private Integer reps;
         private Double weightKg;
         private Integer durationMin;
-        // getters/setters...
     }
 
     public String getContent() { return content; }

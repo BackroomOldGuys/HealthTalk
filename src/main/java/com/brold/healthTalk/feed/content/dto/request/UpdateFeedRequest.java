@@ -14,6 +14,20 @@ public class UpdateFeedRequest {
     private String content;
     @Valid
     private List<ExerciseRecord> exercises;
+
+    private List<Integer> tags;
+
+    //const
+    public UpdateFeedRequest() {}
+
+    public UpdateFeedRequest(String content,
+                             List<ExerciseRecord> exercises,
+                             List<Integer> tags) {
+        this.content   = content;
+        this.exercises = exercises;
+        this.tags      = tags;
+    }
+
     @Data
     public static class ExerciseRecord {
         @NotNull private Integer exerciseDefinitionId;
