@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/healthtalk?serverTimezone=Asia/Seoul&useSSL=false
+    username: root
+    password: 1250
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update      # 테이블이 없으면 자동 생성
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  websocket:
+    cors:
+      allowed-origins: "*"
+
