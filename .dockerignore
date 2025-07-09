@@ -1,0 +1,16 @@
+# .dockerignore
+
+# Git 관련 파일
+.git
+.gitignore
+
+# Maven 빌드 결과물 (다단계 빌드에서는 필요 없음)
+target/
+
+# IDE 설정 파일
+.idea/
+.vscode/
+*.iml
+
+# 로그 파일
+*.log

@@ -1,0 +1,229 @@
+-- =========================================================================
+--  Idempotent Schema & Data Initialization Script
+--  - CREATE TABLE -> CREATE TABLE IF NOT EXISTS
+--  - INSERT INTO -> INSERT IGNORE INTO
+--  이 스크립트는 여러 번 실행해도 오류가 발생하지 않습니다.
+-- =========================================================================
+
+-- =========== 1. 마스터/공통 코드 테이블 ===========
+CREATE TABLE IF NOT EXISTS workout_levels (
+                                              id INT AUTO_INCREMENT PRIMARY KEY,
+                                              name VARCHAR(50) UNIQUE NOT NULL COMMENT '운동 숙련도 (예: 초급, 중급, 고급)'
+    );
+
+CREATE TABLE IF NOT EXISTS workout_goals (
+                                             id INT AUTO_INCREMENT PRIMARY KEY,
+                                             name VARCHAR(100) UNIQUE NOT NULL COMMENT '운동 목표 (예: 다이어트, 근력 증가)'
+    );
+
+CREATE TABLE IF NOT EXISTS body_discomforts (
+                                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                                name VARCHAR(100) UNIQUE NOT NULL COMMENT '불편 부위 (예: 무릎, 허리, 어깨)'
+    );
+
+CREATE TABLE IF NOT EXISTS exercise_definitions (
+                                                    id INT AUTO_INCREMENT PRIMARY KEY,
+                                                    name VARCHAR(100) UNIQUE NOT NULL COMMENT '개별 운동 종류 (예: 벤치프레스, 스쿼트)'
+    );
+
+CREATE TABLE IF NOT EXISTS tag_definitions (
+                                               id INT AUTO_INCREMENT PRIMARY KEY,
+                                               name VARCHAR(50) UNIQUE NOT NULL COMMENT '해시태그 (예: 오운완, 바디프로필)'
+    );
+
+
+-- =========== 2. 사용자(User) 관련 테이블 ===========
+CREATE TABLE IF NOT EXISTS users (
+                                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                     email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL COMMENT 'Bcrypt로 해시된 비밀번호',
+    nickname VARCHAR(50) UNIQUE NOT NULL,
+    gender ENUM('MALE', 'FEMALE', 'OTHER') NOT NULL,
+    age INT,
+    height_cm FLOAT,
+    weight_kg FLOAT,
+    profile_image_url VARCHAR(500),
+    bio TEXT COMMENT '자기소개',
+    workout_level_id INT,
+    workout_goal_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (workout_level_id) REFERENCES workout_levels(id),
+    FOREIGN KEY (workout_goal_id) REFERENCES workout_goals(id)
+    );
+
+CREATE TABLE IF NOT EXISTS user_discomforts (
+                                                user_id BIGINT,
+                                                discomfort_id INT,
+                                                PRIMARY KEY (user_id, discomfort_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (discomfort_id) REFERENCES body_discomforts(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS user_follows (
+                                            follower_id BIGINT COMMENT '팔로우를 요청한 사용자',
+                                            following_id BIGINT COMMENT '팔로우를 당한 사용자',
+                                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                            PRIMARY KEY (follower_id, following_id),
+    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+                                              user_id BIGINT PRIMARY KEY,
+                                              refresh_token TEXT NOT NULL,
+                                              expires_at TIMESTAMP NOT NULL,
+                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+
+-- =========== 4. 클럽(Club) 관련 테이블 ===========
+CREATE TABLE IF NOT EXISTS clubs (
+                                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                     name VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) COMMENT '비공개 클럽용 비밀번호',
+    description VARCHAR(255),
+    owner_id BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (owner_id) REFERENCES users(id)
+    );
+
+CREATE TABLE IF NOT EXISTS club_members (
+                                            club_id BIGINT,
+                                            user_id BIGINT,
+                                            role ENUM('OWNER', 'MEMBER') NOT NULL DEFAULT 'MEMBER',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (club_id, user_id),
+    FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS club_checklists (
+                                               club_id BIGINT,
+                                               user_id BIGINT,
+                                               date DATE,
+                                               completed BOOLEAN NOT NULL DEFAULT FALSE,
+                                               completed_at TIMESTAMP,
+                                               PRIMARY KEY (club_id, user_id, date),
+    FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+
+-- =========== 3. 피드(Feed) 관련 테이블 ===========
+CREATE TABLE IF NOT EXISTS feeds (
+                                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                     user_id BIGINT NOT NULL,
+                                     club_id BIGINT COMMENT '클럽 피드일 경우 club_id를 가짐',
+                                     content TEXT,
+                                     image_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE SET NULL
+    );
+
+CREATE TABLE IF NOT EXISTS feed_exercises (
+                                              id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                              feed_id BIGINT NOT NULL,
+                                              exercise_definition_id INT NOT NULL,
+                                              sets INT,
+                                              reps INT,
+                                              weight_kg INT,
+                                              duration_min INT COMMENT '운동 시간(분)',
+
+                                              FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_definition_id) REFERENCES exercise_definitions(id)
+    );
+
+CREATE TABLE IF NOT EXISTS feed_likes (
+                                          user_id BIGINT,
+                                          feed_id BIGINT,
+                                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                          PRIMARY KEY (user_id, feed_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS feed_comments (
+                                             id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                             feed_id BIGINT NOT NULL,
+                                             user_id BIGINT NOT NULL,
+                                             comment_text TEXT NOT NULL,
+                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                                             FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS feed_tags (
+                                         feed_id BIGINT,
+                                         tag_id INT,
+                                         PRIMARY KEY (feed_id, tag_id),
+    FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tag_definitions(id) ON DELETE CASCADE
+    );
+
+-- =========== 5. 채팅(Chat) 및 알림(Notification) 테이블 ===========
+CREATE TABLE IF NOT EXISTS chat_rooms (
+                                          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                          room_type ENUM('PRIVATE', 'CLUB') NOT NULL,
+    club_id BIGINT UNIQUE COMMENT 'CLUB 타입일 경우 clubs.id를 가짐',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS chat_participants (
+                                                 room_id BIGINT,
+                                                 user_id BIGINT,
+                                                 PRIMARY KEY (room_id, user_id),
+    FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+                                             id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                             room_id BIGINT NOT NULL,
+                                             sender_id BIGINT NOT NULL,
+                                             content TEXT NOT NULL,
+                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                                             FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id)
+    );
+
+CREATE TABLE IF NOT EXISTS notifications (
+                                             id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                             user_id BIGINT NOT NULL COMMENT '알림을 받을 사용자',
+                                             type ENUM('NEW_FOLLOWER', 'NEW_LIKE', 'NEW_COMMENT', 'CLUB_CHAT', 'PRIVATE_CHAT') NOT NULL,
+    content VARCHAR(255) NOT NULL,
+    reference_url VARCHAR(500) COMMENT '클릭 시 이동할 경로',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+-- =========================================================================
+--  초기 데이터 삽입 (이미 데이터가 존재하면 무시하고 넘어감)
+-- =========================================================================
+
+-- 운동 숙련도 데이터 (workout_levels)
+INSERT IGNORE INTO workout_levels (name) VALUES
+('초급'),          -- 이제 막 운동을 시작한 단계
+('중급'),          -- 꾸준히 운동을 해온 단계
+('고급');          -- 전문적인 수준의 운동을 소화하는 단계
+
+-- 운동 목표 데이터 (workout_goals)
+INSERT IGNORE INTO workout_goals (name) VALUES
+('다이어트'),         -- 체중 감량 및 체지방 감소 목표
+('근력 증가'),       -- 근육의 힘을 기르는 목표
+('근비대'),         -- 근육의 크기를 키우는 목표 (보디빌딩)
+('체력 증진'),       -- 전반적인 신체 능력 및 지구력 향상 목표
+('자세 교정'),       -- 바른 자세를 만들기 위한 목표
+('유연성 향상');     -- 관절 가동 범위 및 유연성을 늘리는 목표
