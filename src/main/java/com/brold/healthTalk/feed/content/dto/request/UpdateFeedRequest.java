@@ -9,20 +9,18 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class CreateFeedRequest {
-
+public class UpdateFeedRequest {
     @NotBlank @Size(max = 200)
     private String content;
-
     @Valid
     private List<ExerciseRecord> exercises;
 
     private List<Integer> tags;
 
     //const
-    public CreateFeedRequest() {}
+    public UpdateFeedRequest() {}
 
-    public CreateFeedRequest(String content,
+    public UpdateFeedRequest(String content,
                              List<ExerciseRecord> exercises,
                              List<Integer> tags) {
         this.content   = content;
@@ -30,17 +28,12 @@ public class CreateFeedRequest {
         this.tags      = tags;
     }
 
-    // inner DTO
     @Data
     public static class ExerciseRecord {
-        @NotNull
-        private Integer exerciseDefinitionId;
+        @NotNull private Integer exerciseDefinitionId;
         @NotNull private Integer sets;
         @NotNull private Integer reps;
         private Double weightKg;
         private Integer durationMin;
     }
-
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
 }
