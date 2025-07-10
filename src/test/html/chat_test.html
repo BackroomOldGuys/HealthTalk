@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HealthApp Chat Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { margin: 4px; }
+    #messages { margin-top: 20px; list-style: none; padding: 0; }
+    #messages li { padding: 4px 8px; border-bottom: 1px solid #eee; }
+    .section { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h1>WebSocket Chat 테스트</h1>
+
+  <div class="section">
+    <label>Your User ID:
+      <input id="senderId" type="number" value="1" size="3" />
+    </label>
+  </div>
+
+  <div class="section">
+    <strong>클럽 채팅</strong><br/>
+    Club ID:
+    <input id="clubId" type="text" value="1" size="3" />
+    <button onclick="subscribeClub()">구독</button>
+    <button onclick="sendClub()">전송</button>
+  </div>
+
+  <div class="section">
+    <strong>1:1 채팅</strong><br/>
+    Conversation ID:
+    <input id="convId" type="text" value="1_2" size="6" />
+    <button onclick="subscribePrivate()">구독</button>
+    <button onclick="sendPrivate()">전송</button>
+  </div>
+
+  <div class="section">
+    메시지 내용:
+    <input id="message" type="text" size="40" placeholder="Hello world!" />
+  </div>
+
+  <ul id="messages"></ul>
+
+  <script>
+    // withCredentials: false 로 CORS 자격증명 없이 연결
+    const socket = new SockJS('http://localhost:8080/ws/chat', null, { withCredentials: false });
+    const client = Stomp.over(socket);
+    client.debug = () => {}; // 로그 너무 많으니 숨기려면 빈 함수
+
+    client.connect({}, () => {
+      showMessage('[시스템] STOMP 연결됨');
+    });
+
+async function subscribeClub() {
+  const clubId = document.getElementById('clubId').value;
+
+  // 1) 과거 채팅 이력 조회 (limit=50, offset=0)
+  try {
+    const res = await fetch(
+      `http://localhost:8080/api/chats/club/${clubId}/messages?limit=50&offset=0`
+    , {
+      headers: { 'Authorization': 'Bearer <your-token>' } // 인증 필요 시
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const page = await res.json();
+    // 오래된 순서대로 렌더링
+    page.content.forEach(msg => {
+      showMessage(`[클럽 ${clubId} 히스토리] (${msg.senderId}) ${msg.content}`);
+    });
+  } catch (e) {
+    console.error('클럽 이력 조회 실패', e);
+    showMessage('[오류] 클럽 채팅 이력 조회에 실패했습니다.');
+  }
+
+  // 2) 실시간 구독
+  client.subscribe(`/topic/club/${clubId}/messages`, frame => {
+    const body = JSON.parse(frame.body);
+    showMessage(`[클럽 ${clubId}] (${body.senderId}) ${body.content}`);
+  });
+  showMessage(`[시스템] 클럽 ${clubId} 구독 시작`);
+}
+
+
+    async function subscribePrivate() {
+    const convId = document.getElementById('convId').value;
+    const senderId = +document.getElementById('senderId').value;
+
+    // 1) 이전 대화 이력 가져오기
+    //    limit=50, offset=0 으로 가장 최근 50개 메시지 로드
+    try {
+        const res = await fetch(
+        `http://localhost:8080/api/chats/private/${convId}/messages?limit=50&offset=0`
+        , {
+        headers: { 'Authorization': 'Bearer <your-token>' } // 인증 필요하면 추가
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        const page = await res.json();
+        // 메시지를 오래된 순서대로 보여주려면 Asc 정렬로 왔다고 가정
+        page.content.forEach(msg => {
+        showMessage(`[히스토리] (${msg.senderId}) ${msg.content}`);
+        });
+    } catch (e) {
+        console.error('이력 조회 실패', e);
+        showMessage('[오류] 과거 대화 이력 조회에 실패했습니다.');
+    }
+
+    // 2) 실시간 구독
+    client.subscribe(`/topic/private/${convId}/msgs`, frame => {
+        const body = JSON.parse(frame.body);
+        showMessage(`[1:1 ${convId}] (${body.senderId}) ${body.content}`);
+    });
+    showMessage(`[시스템] 1:1 ${convId} 구독 시작`);
+    }
+
+    function sendClub() {
+      const senderId = +document.getElementById('senderId').value;
+      const clubId   = document.getElementById('clubId').value;
+      const content  = document.getElementById('message').value;
+
+      client.send(
+        `/app/chat/club/${clubId}/send`,
+        {},
+        JSON.stringify({ senderId, content })
+      );
+      showMessage(`[보냄→클럽 ${clubId}] (${senderId}) ${content}`);
+    }
+
+    function sendPrivate() {
+      const senderId   = +document.getElementById('senderId').value;
+      const convId     = document.getElementById('convId').value;
+      const [a, b]     = convId.split('_').map(s => +s);
+      const receiverId = (senderId === a ? b : a);
+      const content    = document.getElementById('message').value;
+
+      // 이제 path에 convId를 포함하지 않습니다.
+      client.send(
+        `/app/chat/private/send`,
+        {},
+        JSON.stringify({ senderId, receiverId, content })
+      );
+      showMessage(`[보냄→1:1 ${convId}] (${senderId}→${receiverId}) ${content}`);
+    }
+
+    function showMessage(txt) {
+      const li = document.createElement('li');
+      li.textContent = txt;
+      document.getElementById('messages').appendChild(li);
+    }
+  </script>
+</body>
+</html>

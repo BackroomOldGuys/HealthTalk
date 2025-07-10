@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS body_discomforts (
 
 CREATE TABLE IF NOT EXISTS exercise_definitions (
                                                     id INT AUTO_INCREMENT PRIMARY KEY,
-                                                    name VARCHAR(100) UNIQUE NOT NULL COMMENT '개별 운동 종류 (예: 벤치프레스, 스쿼트)'
+                                                    name VARCHAR(100) UNIQUE NOT NULL COMMENT '개별 운동 종류 (예: 벤치프레스, 스쿼트)',
+                                                    target_area VARCHAR(100) COMMENT '운동 주 타겟 부위 (예: 가슴, 등, 하체)'
     );
 
 CREATE TABLE IF NOT EXISTS tag_definitions (
@@ -134,7 +135,7 @@ CREATE TABLE IF NOT EXISTS feed_exercises (
                                               exercise_definition_id INT NOT NULL,
                                               sets INT,
                                               reps INT,
-                                              weight_kg INT,
+                                              weight_kg FLOAT,
                                               duration_min INT COMMENT '운동 시간(분)',
 
                                               FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
@@ -174,6 +175,7 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
                                           id BIGINT AUTO_INCREMENT PRIMARY KEY,
                                           room_type ENUM('PRIVATE', 'CLUB') NOT NULL,
     club_id BIGINT UNIQUE COMMENT 'CLUB 타입일 경우 clubs.id를 가짐',
+    conversation_id VARCHAR(255) UNIQUE COMMENT '1:1 채팅방의 고유 식별자',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
     );
@@ -190,11 +192,13 @@ CREATE TABLE IF NOT EXISTS chat_messages (
                                              id BIGINT AUTO_INCREMENT PRIMARY KEY,
                                              room_id BIGINT NOT NULL,
                                              sender_id BIGINT NOT NULL,
+                                             receiver_id BIGINT COMMENT '메시지 수신자 ID',
                                              content TEXT NOT NULL,
                                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                                              FOREIGN KEY (room_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id) REFERENCES users(id)
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id)
     );
 
 CREATE TABLE IF NOT EXISTS notifications (
