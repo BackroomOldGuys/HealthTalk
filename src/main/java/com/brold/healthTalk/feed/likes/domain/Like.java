@@ -1,6 +1,6 @@
 package com.brold.healthTalk.feed.likes.domain;
 
-import com.brold.healthTalk.user.entity.User;
+import com.brold.healthTalk.user.common.domain.User;
 import com.brold.healthTalk.feed.content.domain.Feed;
 import jakarta.persistence.*;
 import lombok.Getter;

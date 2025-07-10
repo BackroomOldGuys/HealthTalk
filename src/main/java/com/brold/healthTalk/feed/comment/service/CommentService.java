@@ -3,7 +3,7 @@ package com.brold.healthTalk.feed.comment.service;
 import com.brold.healthTalk.feed.comment.domain.Comment;
 import com.brold.healthTalk.feed.comment.repository.CommentRepository;
 import com.brold.healthTalk.feed.content.repository.FeedRepository;
-import com.brold.healthTalk.user.repository.UserRepository;
+import com.brold.healthTalk.user.common.repository.UserRepository;
 import com.brold.healthTalk.feed.comment.dto.response.CommentResponse;
 import com.brold.healthTalk.feed.comment.dto.request.CommentRequest;
 import org.springframework.stereotype.Service;

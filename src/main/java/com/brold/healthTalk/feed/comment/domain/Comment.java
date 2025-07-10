@@ -1,7 +1,7 @@
 package com.brold.healthTalk.feed.comment.domain;
 
 import com.brold.healthTalk.feed.content.domain.Feed;
-import com.brold.healthTalk.user.entity.User;
+import com.brold.healthTalk.user.common.domain.User;
 import jakarta.persistence.*;
 import lombok.Data;
 
