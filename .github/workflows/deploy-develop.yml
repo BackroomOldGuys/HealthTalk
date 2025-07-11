@@ -1,0 +1,81 @@
+# 워크플로우 이름
+name: Deploy to Amazon ECS on Develop Branch
+
+# 워크플로우 트리거 조건: 'develop' 브랜치에 push 이벤트가 발생했을 때 실행
+on:
+  push:
+    branches:
+      - develop
+
+# 워크플로우에서 사용할 환경 변수 (리전, ECR/ECS 이름 등)
+# TODO: 아래 값들을 본인의 환경에 맞게 수정해주세요.
+env:
+  AWS_REGION: ap-northeast-2                   # 예: ap-northeast-2
+  ECR_REPOSITORY: healthtalk                  # AWS ECR 리포지토리 이름
+  ECS_SERVICE: healthtalk-server-backend-task-service-zx4upoj6                  # AWS ECS 서비스 이름
+  ECS_CLUSTER: healthtalk-server-backend        # AWS ECS 클러스터 이름
+  # ECS 작업 정의 JSON 파일의 경로 (이 파일은 아래에서 생성합니다)
+  ECS_TASK_DEFINITION: .aws/task-definition.json
+  CONTAINER_NAME: healthtalk-container              # 작업 정의에 명시된 컨테이너 이름
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest # 실행 환경
+    environment: development # GitHub Environment 설정 (선택 사항)
+
+    steps:
+      # 1. GitHub 리포지토리 코드 체크아웃
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # 2. AWS 자격 증명 구성
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. Amazon ECR에 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 4. Docker 이미지 빌드, 태그 지정 및 ECR에 푸시
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }} # Git commit 해시를 이미지 태그로 사용
+        run: |
+          # Docker 이미지 빌드
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # ECR에 이미지 푸시
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          # 다음 단계에서 사용할 수 있도록 이미지 URI를 출력 변수로 설정
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # 5. ECS 작업 정의 파일에 새 이미지 URI와 환경 변수 채우기
+      # 이 단계는 기존 task-definition.json 파일을 템플릿으로 사용합니다.
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+          # 여기에 DB 환경 변수를 등록합니다. GitHub Secrets 값을 사용합니다.
+          environment-variables: |
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+      # 6. 업데이트된 작업 정의를 ECS에 배포
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true # 배포가 안정화될 때까지 기다림
